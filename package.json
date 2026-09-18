@@ -1,0 +1,26 @@
+{
+  "name": "gridgate-dualhost",
+  "version": "0.6.0",
+  "private": true,
+  "type": "module",
+  "description": "GridGate v0.6 dual-host project: Cloudflare Workers/Durable Objects plus Render Node.js/WebSocket backend.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "wrangler dev",
+    "dev:cloudflare": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:cloudflare": "wrangler deploy",
+    "dev:render": "node render-server.js",
+    "start": "node render-server.js",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "express": "4.21.2",
+    "ws": "8.18.3"
+  },
+  "devDependencies": {
+    "wrangler": "4.135.0"
+  }
+}

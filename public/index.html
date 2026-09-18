@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#121923" />
+  <title>GridGate — Browser Strategy Game</title>
+  <link rel="stylesheet" href="/css/style.css?v=0.6.0" />
+</head>
+<body>
+  <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme" title="Toggle light / dark theme">☀</button>
+  <main class="app-shell">
+    <section id="home-screen" class="screen home-screen">
+      <div class="brand-lockup"><div class="brand-mark">G</div><div><h1>GridGate</h1><p>Race forward. Build smarter.</p></div></div>
+      <div class="home-card">
+        <label class="field-label" for="player-name">Your name</label>
+        <input id="player-name" class="text-input" maxlength="18" value="Player" autocomplete="nickname" />
+
+        <div class="setup-block">
+          <div class="setup-row"><span class="field-label inline-label">Players</span><div id="player-count-group" class="segmented">
+            <button data-count="2" class="seg-button selected">2</button><button data-count="3" class="seg-button">3</button><button data-count="4" class="seg-button">4</button>
+          </div></div>
+          <div class="setup-row mode-setup"><span class="field-label inline-label">Mode</span><div id="game-type-group" class="segmented mode-segmented">
+            <button data-mode="classic" class="seg-button selected"><strong>Classic</strong><small>Opposite side</small></button>
+            <button data-mode="race" class="seg-button"><strong>Race</strong><small>Same row → finish</small></button>
+            <button data-mode="center" class="seg-button"><strong>Center</strong><small>Reach the middle</small></button>
+          </div></div>
+          <div id="setup-summary" class="setup-summary">9×9 board • 10 walls each</div>
+        </div>
+
+        <button id="create-online" class="mode-button primary"><span class="mode-icon">＋</span><span><strong>Create room</strong><small>Play friends online</small></span><span class="chevron">›</span></button>
+        <div class="join-row"><input id="join-code" class="text-input room-input" maxlength="6" placeholder="ROOM CODE" autocomplete="off" /><button id="join-online" class="compact-button">Join</button></div>
+        <button id="ai-game" class="mode-button"><span class="mode-icon">◆</span><span><strong>Play vs AI</strong><small>You vs computer opponents</small></span><span class="chevron">›</span></button>
+        <div id="ai-difficulty-row" class="difficulty-row hidden"><span class="field-label inline-label">AI</span><div class="segmented difficulty-segmented">
+          <button data-ai="beginner" class="seg-button selected">Beginner</button><button data-ai="skilled" class="seg-button">Skilled</button><button data-ai="veteran" class="seg-button">Veteran</button><button data-ai="expert" class="seg-button">Expert</button>
+        </div><button id="start-ai" class="compact-button">Start</button></div>
+        <button id="local-game" class="mode-button"><span class="mode-icon">⚔</span><span><strong>Local game</strong><small>Pass-and-play on this device</small></span><span class="chevron">›</span></button>
+      </div>
+      <p class="home-note">2–4 players • Classic / Race / Center • no account required</p>
+    </section>
+
+    <section id="game-screen" class="screen game-screen hidden">
+      <header class="game-header">
+        <button id="back-home" class="icon-button" aria-label="Back">‹</button>
+        <div><div id="game-mode" class="eyebrow">Game</div><div id="turn-text" class="turn-title">Waiting…</div></div>
+        <div class="header-right"><div id="turn-timer" class="turn-timer hidden">32s</div><div id="connection-state" class="connection-pill">Offline</div><button id="debug-toggle" class="copy-button debug-toggle">Debug</button><div id="room-code-wrap" class="room-code-wrap hidden"><span id="room-code">------</span><button id="copy-code" class="copy-button">Copy code</button><button id="copy-link" class="copy-button">Copy link</button></div></div>
+      </header>
+
+      <div class="game-layout"><section id="players-panel" class="players-panel"></section><section class="board-panel"><svg id="board" class="board" role="img" aria-label="GridGate game board"></svg></section></div>
+
+      <section id="debug-panel" class="debug-panel hidden"><div class="debug-head"><div><strong>Live network diagnostics</strong><small>Cloudflare room + WebSocket connection stages</small></div><div class="debug-actions"><button id="debug-run" class="copy-button">Run test</button><button id="debug-copy" class="copy-button">Copy diagnostics</button><button id="debug-clear" class="copy-button">Clear</button></div></div><pre id="debug-log" class="debug-log">No diagnostics yet.</pre></section>
+
+      <footer class="game-controls"><div id="orientation-group" class="orientation-group" data-player="P1"><span class="orientation-label">Wall</span><button id="wall-horizontal" class="orientation-button selected"><span class="wall-mini wall-mini-h"></span><span>Horizontal</span></button><button id="wall-vertical" class="orientation-button"><span class="wall-mini wall-mini-v"></span><span>Vertical</span></button></div><button id="rematch" class="action-button hidden">Rematch</button><button id="reset-local" class="action-button hidden">Restart</button></footer>
+    </section>
+  </main>
+
+  <div id="winner-overlay" class="winner-overlay hidden" aria-live="polite"><div class="winner-card"><div class="winner-sparkles">✦ ✧ ✦</div><div class="winner-kicker">MATCH OVER</div><h2 id="winner-title">Player wins!</h2><p id="winner-subtitle">Great match.</p></div><div id="confetti-layer" class="confetti-layer"></div></div>
+  <div id="toast" class="toast" role="status"></div>
+  <script type="module" src="/js/app.js?v=0.6.0"></script>
+</body>
+</html>
