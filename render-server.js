@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createInitialState, applyAction, skipCurrentTurn, getGameConfig } from './public/shared/game-engine.js';
 
-const APP_VERSION = '0.6.0';
+const APP_VERSION = '0.8.0';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const BACKEND = 'render-node';

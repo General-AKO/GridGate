@@ -21,7 +21,7 @@ function createPlayers(config) {
   const midLow = Math.floor((size - 1) / 2);
   const midHigh = Math.ceil((size - 1) / 2);
   if (mode === MODES.RACE) {
-    return evenlySpacedColumns(size, count).map((col, i) => ({ id: `P${i + 1}`, row: 0, col, goal: 'bottom', walls, color: PLAYER_COLORS[`P${i + 1}`] }));
+    return evenlySpacedColumns(size, count).map((col, i) => ({ id: `P${i + 1}`, row: size - 1, col, goal: 'top', walls, color: PLAYER_COLORS[`P${i + 1}`] }));
   }
   if (mode === MODES.CENTER) {
     const starts = [

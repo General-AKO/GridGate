@@ -1,4 +1,4 @@
-# GridGate v0.6 — تشغيل Cloudflare وRender بالتوازي
+# GridGate v0.8 — تشغيل Cloudflare وRender بالتوازي
 
 هذه النسخة لا تحذف Cloudflare. نفس الواجهة ونفس Game Engine يمكن تشغيلهما بطريقتين:
 
@@ -64,7 +64,7 @@ Render يبني Web Service من Git repository. ارفع هذا المجلد إ
 https://gridgate-game-xxxx.onrender.com
 ```
 
-افتح `/api/health` للتأكد. يجب أن ترى `backend: "render-node"` و`version: "0.6.0"`.
+افتح `/api/health` للتأكد. يجب أن ترى `backend: "render-node"` و`version: "0.8.0"`.
 
 ## 4) الاختبار الصحيح بين Cloudflare وRender
 
@@ -116,3 +116,13 @@ npm start
 ## 8) ملاحظة أمنية/معمارية
 
 العميل لا يقرر صحة الحركات في Online. خادم Render يستعمل نفس `applyAction()` وBFS والقواعد الموجودة في `public/shared/game-engine.js`، تمامًا كما يفعل Backend Cloudflare.
+
+
+## تحسينات AI في v0.8
+- اختيار الجدران أصبح مبنيًا على أقصر مسار فعلي للخصم.
+- تقييم الجدار يحسب مقدار إطالة طريق الخصم مقابل الضرر على طريق الـAI.
+- دفاع طارئ إذا كان الخصم على بعد حركة أو حركتين من الفوز.
+- Veteran وExpert يستخدمان Alpha-Beta مرتبًا مع Iterative Deepening وTransposition Table.
+- Expert محدود بميزانية بحث حتى يبقى خفيفًا على المتصفح.
+- توجد عقوبة واضحة للتراجع غير المفيد.
+- عندما يكون الـAI متقدمًا بوضوح، يوفر الجدران ويتجه للفوز بدل إهدارها.

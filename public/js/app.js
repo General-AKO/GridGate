@@ -4,7 +4,7 @@ import { BoardView } from './board.js';
 
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const ui={home:$('#home-screen'),game:$('#game-screen'),name:$('#player-name'),joinCode:$('#join-code'),create:$('#create-online'),join:$('#join-online'),local:$('#local-game'),ai:$('#ai-game'),startAi:$('#start-ai'),aiRow:$('#ai-difficulty-row'),back:$('#back-home'),theme:$('#theme-toggle'),summary:$('#setup-summary'),playersPanel:$('#players-panel'),board:$('#board'),gameMode:$('#game-mode'),turnText:$('#turn-text'),connection:$('#connection-state'),timer:$('#turn-timer'),roomWrap:$('#room-code-wrap'),roomCode:$('#room-code'),copyCode:$('#copy-code'),copyLink:$('#copy-link'),orientationGroup:$('#orientation-group'),h:$('#wall-horizontal'),v:$('#wall-vertical'),rematch:$('#rematch'),reset:$('#reset-local'),toast:$('#toast'),winner:$('#winner-overlay'),winnerTitle:$('#winner-title'),winnerSubtitle:$('#winner-subtitle'),confetti:$('#confetti-layer'),debugToggle:$('#debug-toggle'),debugPanel:$('#debug-panel'),debugLog:$('#debug-log'),debugRun:$('#debug-run'),debugCopy:$('#debug-copy'),debugClear:$('#debug-clear')};
-const APP_VERSION='0.6.0',LAST_NAME_KEY='gridgate:last-name',THEME_KEY='gridgate:theme';
+const APP_VERSION='0.7.0',LAST_NAME_KEY='gridgate:last-name',THEME_KEY='gridgate:theme';
 let settings={playerCount:2,mode:MODES.CLASSIC,aiDifficulty:'beginner'};
 let playMode='home',state=null,snapshot=null,socket=null,roomCode=null,myPlayerId=null,token='',manualClose=false,reconnectTimer=null,countdownTimer=null,serverOffset=0,shownWinnerMove=null,aiThinking=false;
 const diagnostics=[];
