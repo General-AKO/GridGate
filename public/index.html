@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#121923" />
   <title>GridGate — Browser Strategy Game</title>
-  <link rel="stylesheet" href="/css/style.css?v=0.9.0" />
+  <link rel="stylesheet" href="/css/style.css?v=0.10.0" />
 </head>
 <body>
   <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme" title="Toggle light / dark theme">☀</button>
@@ -25,22 +25,19 @@
             <button data-mode="race" class="seg-button"><strong>Race</strong><small>Same row → finish</small></button>
             <button data-mode="center" class="seg-button"><strong>Center</strong><small>Reach the middle</small></button>
           </div></div>
+          <div id="online-ai-row" class="setup-row hidden"><span class="field-label inline-label">AI Players</span><div id="online-ai-group" class="segmented">
+            <button data-online-ai="0" class="seg-button selected">0</button><button data-online-ai="1" class="seg-button">1</button><button data-online-ai="2" class="seg-button hidden">2</button>
+          </div></div>
+          <div id="online-ai-help" class="setup-summary hidden">Online AI always uses Veteran difficulty.</div>
           <div id="setup-summary" class="setup-summary">9×9 board • 10 walls each</div>
         </div>
 
         <button id="create-online" class="mode-button primary"><span class="mode-icon">＋</span><span><strong>Create room</strong><small>Play friends online</small></span><span class="chevron">›</span></button>
         <div class="join-row"><input id="join-code" class="text-input room-input" maxlength="6" placeholder="ROOM CODE" autocomplete="off" /><button id="join-online" class="compact-button">Join</button></div>
         <button id="ai-game" class="mode-button"><span class="mode-icon">◆</span><span><strong>Play vs AI</strong><small>You vs computer opponents</small></span><span class="chevron">›</span></button>
-        <div id="ai-difficulty-row" class="difficulty-row hidden">
-          <div class="ai-config-line"><span class="field-label inline-label">AI level</span><div class="segmented difficulty-segmented">
-            <button data-ai="beginner" class="seg-button selected">Beginner</button><button data-ai="skilled" class="seg-button">Skilled</button><button data-ai="veteran" class="seg-button">Veteran</button><button data-ai="expert" class="seg-button">Expert</button>
-          </div></div>
-          <div class="ai-config-line"><span class="field-label inline-label">AI seats</span><div id="ai-seat-group" class="segmented ai-seat-segmented">
-            <button data-ai-seat="P1" class="seg-button">P1</button><button data-ai-seat="P2" class="seg-button selected">P2</button><button data-ai-seat="P3" class="seg-button hidden">P3</button><button data-ai-seat="P4" class="seg-button hidden">P4</button>
-          </div></div>
-          <div id="ai-seat-help" class="ai-seat-help">Choose which seat is controlled by AI.</div>
-          <button id="start-ai" class="compact-button">Start</button>
-        </div>
+        <div id="ai-difficulty-row" class="difficulty-row hidden"><span class="field-label inline-label">AI</span><div class="segmented difficulty-segmented">
+          <button data-ai="beginner" class="seg-button selected">Beginner</button><button data-ai="skilled" class="seg-button">Skilled</button><button data-ai="veteran" class="seg-button">Veteran</button><button data-ai="expert" class="seg-button">Expert</button>
+        </div><button id="start-ai" class="compact-button">Start</button></div>
         <button id="local-game" class="mode-button"><span class="mode-icon">⚔</span><span><strong>Local game</strong><small>Pass-and-play on this device</small></span><span class="chevron">›</span></button>
       </div>
       <p class="home-note">2–4 players • Classic / Race / Center • no account required</p>
@@ -63,6 +60,6 @@
 
   <div id="winner-overlay" class="winner-overlay hidden" aria-live="polite"><div class="winner-card"><div class="winner-sparkles">✦ ✧ ✦</div><div class="winner-kicker">MATCH OVER</div><h2 id="winner-title">Player wins!</h2><p id="winner-subtitle">Great match.</p></div><div id="confetti-layer" class="confetti-layer"></div></div>
   <div id="toast" class="toast" role="status"></div>
-  <script type="module" src="/js/app.js?v=0.9.0"></script>
+  <script type="module" src="/js/app.js?v=0.10.0"></script>
 </body>
 </html>

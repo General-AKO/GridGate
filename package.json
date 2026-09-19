@@ -1,9 +1,9 @@
 {
   "name": "gridgate-dualhost",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "private": true,
   "type": "module",
-  "description": "GridGate v0.9 dual-host project: Cloudflare Workers/Durable Objects plus Render Node.js/WebSocket backend.",
+  "description": "GridGate v0.10 dual-host project: Cloudflare Workers/Durable Objects plus Render Node.js/WebSocket backend.",
   "engines": {
     "node": ">=20"
   },
