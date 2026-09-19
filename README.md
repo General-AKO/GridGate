@@ -5,7 +5,7 @@ Run: `npm install && npm test && npm run dev`
 Deploy: `npm run deploy`
 
 
-## AI v0.8 improvements
+## AI v0.9 improvements
 - Targeted wall candidates are generated from opponents' current shortest paths.
 - Walls are ranked by opponent delay versus self-damage.
 - Emergency defense blocks opponents that are one or two moves from winning when possible.
