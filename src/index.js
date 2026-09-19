@@ -1,7 +1,7 @@
-import { createInitialState, applyAction, skipCurrentTurn, getGameConfig } from '../public/shared/game-engine.js';
+import { createInitialState, applyAction, skipCurrentTurn, getGameConfig, getAiSeatIds } from '../public/shared/game-engine.js';
 import { chooseAiAction } from '../public/shared/ai.js';
 
-const ROOM_CODE_ALPHABET='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',ROOM_CODE_LENGTH=6,TURN_MS=32000,AI_DELAY_MS=520,AI_DIFFICULTY='veteran',RECLAIM_GRACE_MS=15000,APP_VERSION='0.10.0';
+const ROOM_CODE_ALPHABET='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',ROOM_CODE_LENGTH=6,TURN_MS=32000,AI_DELAY_MS=520,AI_DIFFICULTY='veteran',RECLAIM_GRACE_MS=15000,APP_VERSION='0.11.0';
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store, no-cache, must-revalidate'}});
 function makeRoomCode(){const b=new Uint8Array(ROOM_CODE_LENGTH);crypto.getRandomValues(b);let c='';for(const x of b)c+=ROOM_CODE_ALPHABET[x%ROOM_CODE_ALPHABET.length];return c}
 const normalizeRoomCode=v=>String(v||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,ROOM_CODE_LENGTH);
@@ -12,7 +12,7 @@ const normalizeAiCount=(playerCount,value)=>{const count=Number(playerCount)||2,
 export default{async fetch(request,env){const url=new URL(request.url),m=meta(request);
   if(url.pathname==='/api/health')return json({ok:true,service:'GridGate',version:APP_VERSION,...m});
   if(url.pathname==='/api/rooms'&&request.method==='POST'){
-    let body={};try{body=await request.json()}catch{}const cfg=getGameConfig(body.playerCount,body.mode);cfg.aiCount=normalizeAiCount(cfg.playerCount,body.aiCount);
+    let body={};try{body=await request.json()}catch{}const cfg=getGameConfig(body.playerCount,body.mode,body.snakeMode);cfg.aiCount=normalizeAiCount(cfg.playerCount,body.aiCount);
     for(let i=0;i<8;i++){const code=makeRoomCode(),stub=env.GAME_ROOMS.get(env.GAME_ROOMS.idFromName(code));const r=await stub.fetch('https://room.internal/internal/create',{method:'POST',headers:{'content-type':'application/json','x-room-code':code},body:JSON.stringify(cfg)});if(r.status===201){const created=await r.json().catch(()=>({}));return json({ok:true,code,config:{...cfg,aiCount:created.aiCount??cfg.aiCount,humanCount:created.humanCount??cfg.playerCount-cfg.aiCount},...m},201)}}
     return json({ok:false,error:'Could not create a unique room.',...m},503);
   }
@@ -24,7 +24,8 @@ export default{async fetch(request,env){const url=new URL(request.url),m=meta(re
 
 export class GameRoom{
   constructor(state,env){this.state=state;this.env=env;this.room=null;this.state.blockConcurrencyWhile(async()=>{this.room=await this.state.storage.get('room')})}
-  seatIds(){return Array.from({length:this.room?.game?.playerCount||2},(_,i)=>`P${i+1}`)}
+  seatIds(){return this.room?.game?.players?.map(p=>p.id)||['P1','P2']}
+  isEliminated(id){return this.room?.game?.players?.find(p=>p.id===id)?.alive===false}
   aiIds(){return this.room?.aiIds||[]}
   humanSeatIds(){const ai=new Set(this.aiIds());return this.seatIds().filter(id=>!ai.has(id))}
   isAiSeat(id){return this.aiIds().includes(id)}
@@ -35,8 +36,8 @@ export class GameRoom{
       if(this.room)return json({ok:false,error:'Room already exists.'},409);
       const code=normalizeRoomCode(request.headers.get('x-room-code'));if(code.length!==6)return json({ok:false,error:'Bad room code.'},400);
       let cfg={};try{cfg=await request.json()}catch{}
-      const game=createInitialState(cfg),aiCount=normalizeAiCount(game.playerCount,cfg.aiCount),allIds=game.players.map(p=>p.id),selectedAiIds=aiCount?allIds.slice(-aiCount):[],players={};
-      for(const p of game.players)players[p.id]=selectedAiIds.includes(p.id)?{name:aiCount===1?'Veteran AI':`Veteran AI ${selectedAiIds.indexOf(p.id)+1}`,ai:true}:null;
+      const game=createInitialState(cfg),selectedAiIds=getAiSeatIds(game,cfg.aiCount),aiCount=selectedAiIds.length,players={};
+      for(const p of game.players)players[p.id]=selectedAiIds.includes(p.id)?{name:game.mode==='survival'?'Snake AI':aiCount===1?'Veteran AI':`Veteran AI ${selectedAiIds.indexOf(p.id)+1}`,ai:true}:null;
       this.room={code,createdAt:Date.now(),players,game,aiCount,aiIds:selectedAiIds,rematchVotes:[],turnDeadline:null,timerRevision:0};
       await this.persist();return json({ok:true,created:true,aiCount,humanCount:this.humanSeatIds().length},201)
     }
@@ -72,8 +73,8 @@ export class GameRoom{
   }
   retryAfterMs(){const now=Date.now();let best=RECLAIM_GRACE_MS;for(const id of this.humanSeatIds()){const p=this.room.players[id];if(!p)return 0;const base=p.disconnectedAt||p.joinReservedAt;if(base)best=Math.min(best,Math.max(0,RECLAIM_GRACE_MS-(now-base)))}return best}
   closeDuplicateSocket(pid,token,except){for(const ws of this.state.getWebSockets()){if(ws===except)continue;const a=ws.deserializeAttachment();if(a?.playerId===pid&&a?.token===token)try{ws.close(4001,'Reconnected from another tab')}catch{}}}
-  presence(){const r={};for(const id of this.seatIds())r[id]=this.isAiSeat(id);for(const ws of this.state.getWebSockets()){const a=ws.deserializeAttachment();if(a?.playerId in r&&!this.isAiSeat(a.playerId))r[a.playerId]=true}return r}
-  isReady(){const p=this.presence();return this.humanSeatIds().every(id=>this.room.players[id]&&p[id])}
+  presence(except=null){const r={};for(const id of this.seatIds())r[id]=this.isAiSeat(id);for(const ws of this.state.getWebSockets()){if(ws===except)continue;const a=ws.deserializeAttachment();if(a?.playerId in r&&!this.isAiSeat(a.playerId))r[a.playerId]=true}return r}
+  isReady(except=null){const p=this.presence(except);return this.humanSeatIds().every(id=>this.room.players[id]&&(p[id]||this.isEliminated(id)))}
   publicSnapshot(forId=null){const presence=this.presence(),players={};for(const id of this.seatIds()){const p=this.room.players[id];players[id]=p?{name:p.name,connected:presence[id],ai:Boolean(p.ai)}:null}return{roomCode:this.room.code,you:forId,players,game:this.room.game,ready:this.isReady(),aiCount:this.room.aiCount||0,aiDifficulty:AI_DIFFICULTY,humanCount:this.humanSeatIds().length,rematchVotes:this.room.rematchVotes,turnDeadline:this.room.turnDeadline,turnDurationMs:TURN_MS,serverNow:Date.now(),timerRevision:this.room.timerRevision||0}}
   send(ws,p){try{ws.send(JSON.stringify(p))}catch{}}
   broadcastState(extra={}){for(const ws of this.state.getWebSockets()){const a=ws.deserializeAttachment();this.send(ws,{type:'state',...this.publicSnapshot(a?.playerId||null),...extra})}}
@@ -104,7 +105,7 @@ export class GameRoom{
     }
     if(d.type==='rematch'){
       if(!this.room.game.winner)return this.send(ws,{type:'error',error:'The game is not finished.'});if(!this.room.rematchVotes.includes(pid))this.room.rematchVotes.push(pid);
-      if(this.humanSeatIds().every(id=>this.room.rematchVotes.includes(id))){this.room.game=createInitialState({playerCount:this.room.game.playerCount,mode:this.room.game.mode});this.room.rematchVotes=[];await this.persist();await this.ensureTurnTimer(true)}else await this.persist();this.broadcastState();return
+      if(this.humanSeatIds().every(id=>this.room.rematchVotes.includes(id))){this.room.game=createInitialState({playerCount:this.room.game.playerCount,mode:this.room.game.mode,snakeMode:this.room.game.snakeMode});this.room.rematchVotes=[];await this.persist();await this.ensureTurnTimer(true)}else await this.persist();this.broadcastState();return
     }
     if(d.type==='sync')return this.send(ws,{type:'state',...this.publicSnapshot(pid)});this.send(ws,{type:'error',error:'Unknown message type.'})
   }
@@ -115,6 +116,6 @@ export class GameRoom{
     const skipped=this.currentPlayerId();this.room.game=skipCurrentTurn(this.room.game);await this.persist();await this.ensureTurnTimer(true);this.broadcastState({timeoutPlayer:skipped})
   }
   async alarm(){if(this.currentTurnIsAi())await this.performAiTurn();else await this.handleTurnTimeout()}
-  async webSocketClose(ws){const a=ws.deserializeAttachment(),pid=a?.playerId,token=a?.token;let replacement=false;for(const other of this.state.getWebSockets()){if(other===ws)continue;const oa=other.deserializeAttachment();if(oa?.playerId===pid&&oa?.token===token){replacement=true;break}}if(!replacement&&pid&&!this.isAiSeat(pid)&&this.room?.players[pid]?.token===token){this.room.players[pid].disconnectedAt=Date.now();await this.clearAlarm()}this.broadcastState()}
+  async webSocketClose(ws){const a=ws.deserializeAttachment(),pid=a?.playerId,token=a?.token;let replacement=false;for(const other of this.state.getWebSockets()){if(other===ws)continue;const oa=other.deserializeAttachment();if(oa?.playerId===pid&&oa?.token===token){replacement=true;break}}if(!replacement&&pid&&!this.isAiSeat(pid)&&this.room?.players[pid]?.token===token){this.room.players[pid].disconnectedAt=Date.now();if(this.isReady(ws)){await this.persist();await this.ensureTurnTimer(false)}else await this.clearAlarm()}this.broadcastState()}
   async webSocketError(ws){await this.webSocketClose(ws)}
 }

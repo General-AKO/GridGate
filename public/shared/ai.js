@@ -6,6 +6,7 @@ import {
   shortestPathLength,
   validateWallPlacement,
 } from './game-engine.js';
+import { chooseSurvivalAction } from './survival-ai.js';
 
 const WIN_SCORE = 1_000_000;
 const INF = 1_000_000_000;
@@ -353,6 +354,7 @@ function chooseImmediate(state, aiId, includeWalls = true, wallLimit = 8) {
 }
 
 export function chooseAiAction(state, playerId, difficulty = 'beginner') {
+  if (state.mode === 'survival') return chooseSurvivalAction(state, playerId, difficulty);
   const moves = allMoveActions(state, playerId);
   if (!moves.length) return null;
 

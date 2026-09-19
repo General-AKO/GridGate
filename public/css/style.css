@@ -8,8 +8,76 @@ button,input{font:inherit}button{cursor:pointer}.hidden{display:none!important}.
 .game-layout{display:grid;grid-template-columns:minmax(185px,230px) minmax(320px,760px);gap:15px;align-items:center;justify-content:center}.players-panel{display:grid;gap:10px}.player-card{border-radius:16px;padding:13px;display:flex;align-items:center;gap:10px}.player-dot{width:14px;height:14px;border-radius:50%;flex:none}.p1{--pc:var(--blue)}.p2{--pc:var(--red)}.p3{--pc:var(--green)}.p4{--pc:var(--orange)}.player-dot{background:var(--pc)}.player-info{flex:1;min-width:0}.player-info strong,.player-info small{display:block}.player-info small,.wall-count{color:var(--muted);font-size:11px}.player-card.active{border-color:color-mix(in srgb,var(--pc) 55%,transparent);box-shadow:0 0 22px color-mix(in srgb,var(--pc) 18%,transparent)}.board-panel{border-radius:22px;padding:12px}.board{display:block;width:100%;max-height:76vh;touch-action:none;user-select:none;-webkit-user-select:none}.board-bg{fill:var(--board)}.board-cell{fill:var(--cell);stroke:var(--gridline);stroke-width:1;filter:drop-shadow(0 0 5px color-mix(in srgb,var(--accent) 6%,transparent))}.goal-cell{stroke-width:3}.goal-p1{stroke:var(--blue);filter:drop-shadow(0 0 7px color-mix(in srgb,var(--blue) 45%,transparent))}.goal-p2{stroke:var(--red);filter:drop-shadow(0 0 7px color-mix(in srgb,var(--red) 45%,transparent))}.goal-p3{stroke:var(--green);filter:drop-shadow(0 0 7px color-mix(in srgb,var(--green) 45%,transparent))}.goal-p4{stroke:var(--orange);filter:drop-shadow(0 0 7px color-mix(in srgb,var(--orange) 45%,transparent))}.legal-move{fill:rgba(35,48,62,.3);stroke:rgba(255,255,255,.55);stroke-width:2}.pawn{stroke:#fff;stroke-width:3;filter:drop-shadow(0 4px 4px rgba(0,0,0,.2))}.pawn.p1,.owner-p1,.preview-p1{fill:var(--blue)}.pawn.p2,.owner-p2,.preview-p2{fill:var(--red)}.pawn.p3,.owner-p3,.preview-p3{fill:var(--green)}.pawn.p4,.owner-p4,.preview-p4{fill:var(--orange)}.wall-target{opacity:0}.wall-target.wall-valid:hover{opacity:.65}.wall-target.wall-invalid:hover{opacity:.2}.touch-wall-preview{opacity:.7!important}.touch-wall-preview.wall-invalid{opacity:.22!important}.placed-wall{filter:drop-shadow(0 2px 2px rgba(0,0,0,.22))}.pawn-shadow{fill:rgba(30,30,30,.18)}
 .game-controls{margin-top:13px;display:flex;justify-content:center;gap:9px;flex-wrap:wrap}.orientation-group{display:flex;align-items:center;gap:7px;padding:7px;border-radius:14px;background:color-mix(in srgb,var(--text) 6%,transparent)}.orientation-label{font-size:12px;color:var(--muted);padding:0 5px}.orientation-button{display:inline-flex;align-items:center;gap:7px;padding:9px 13px}.wall-mini{display:inline-block;border-radius:9px;background:currentColor}.wall-mini-h{width:18px;height:6px}.wall-mini-v{width:6px;height:18px}.orientation-button.selected{color:var(--accent);border-color:var(--accent)}.action-button{padding:10px 16px;font-weight:800}.debug-panel{margin-top:12px;border-radius:16px;padding:12px}.debug-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.debug-head small{display:block;color:var(--muted)}.debug-actions{display:flex;gap:6px;flex-wrap:wrap}.debug-log{max-height:260px;overflow:auto;background:#081019;color:#bfe3ff;padding:10px;border-radius:10px;font-size:10px;user-select:text;-webkit-user-select:text;white-space:pre-wrap}.winner-overlay{position:fixed;inset:0;display:grid;place-items:center;background:rgba(7,12,18,.56);backdrop-filter:blur(8px);z-index:50}.winner-card{position:relative;z-index:2;text-align:center;background:var(--panel);padding:28px 40px;border-radius:24px;border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);box-shadow:0 0 70px var(--accentGlow)}.winner-card h2{font-size:36px;margin:7px}.winner-kicker{color:var(--accent);font-size:11px;font-weight:900;letter-spacing:.18em}.confetti-layer{position:absolute;inset:0;overflow:hidden;pointer-events:none}.confetti-piece{position:absolute;top:-20px;width:8px;height:14px;animation:fall var(--fall) linear forwards;transform:rotate(var(--rot))}.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%) translateY(10px);opacity:0;background:var(--panel);color:var(--text);padding:10px 15px;border-radius:999px;border:1px solid color-mix(in srgb,var(--text) 10%,transparent);z-index:80;transition:.2s}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 @keyframes pulse{to{transform:scale(1.05)}}@keyframes fall{to{transform:translate(var(--drift),110vh) rotate(540deg)}}
-@media(max-width:860px){.game-layout{grid-template-columns:1fr}.players-panel{grid-template-columns:repeat(2,1fr);order:2}.board-panel{order:1}.game-header{grid-template-columns:auto 1fr}.header-right{grid-column:1/-1;justify-content:space-between}}@media(max-width:600px){.app-shell{padding:12px}.setup-row{display:block}.inline-label{margin-bottom:6px}.mode-segmented{display:grid;grid-template-columns:repeat(3,1fr)}.difficulty-row{grid-template-columns:1fr}.difficulty-segmented{display:grid;grid-template-columns:repeat(2,1fr)}.players-panel{grid-template-columns:1fr 1fr}.game-controls{position:sticky;bottom:6px;z-index:15}.orientation-group{backdrop-filter:blur(14px)}}
+@media(max-width:860px){.game-layout{grid-template-columns:1fr}.players-panel{grid-template-columns:repeat(2,1fr);order:2}.board-panel{order:1}.game-header{grid-template-columns:auto 1fr}.header-right{grid-column:1/-1;justify-content:space-between}}@media(max-width:600px){.app-shell{padding:12px}.setup-row{display:block}.inline-label{margin-bottom:6px}.mode-segmented{display:grid;grid-template-columns:repeat(2,1fr)}.difficulty-row{grid-template-columns:1fr}.difficulty-segmented{display:grid;grid-template-columns:repeat(2,1fr)}.players-panel{grid-template-columns:1fr 1fr}.game-controls{position:sticky;bottom:6px;z-index:15}.orientation-group{backdrop-filter:blur(14px)}}
 
 /* v0.9 mixed-AI setup */
 .difficulty-row{display:grid;gap:10px;align-items:center;margin-top:10px}.ai-config-line{display:flex;align-items:center;gap:10px}.ai-seat-segmented{flex-wrap:wrap}.ai-seat-help{font-size:12px;color:var(--muted);padding-left:64px}.ai-seat-segmented .seg-button{min-width:56px}.ai-seat-segmented .seg-button.selected{border-color:var(--accent);color:var(--accent);box-shadow:0 0 18px color-mix(in srgb,var(--accent) 18%,transparent)}
 @media(max-width:640px){.ai-config-line{align-items:flex-start;flex-direction:column}.ai-config-line .inline-label{min-width:0}.ai-seat-help{padding-left:0}.difficulty-segmented{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}.ai-seat-segmented{width:100%}}
+
+/* ------------------------------------------------------------------ v0.11 Survival mode */
+.layer-pawns,.layer-fx,.layer-links{pointer-events:none}
+.piece{transition:transform .34s cubic-bezier(.3,.7,.3,1)}
+.piece-body{transition:opacity 1.1s ease .16s,transform 1.1s ease .16s,filter 1.1s ease .16s}
+.piece.dead{visibility:hidden;transition:transform .34s cubic-bezier(.3,.7,.3,1),visibility 0s linear 1.4s}
+.piece.dead .piece-body{opacity:0;transform:scale(.55);filter:grayscale(1) blur(2px)}
+.layer-pawns.instant .piece,.layer-pawns.instant .piece *{transition:none!important}
+
+/* petrified survivor: grey stone layer fades in over the original colour */
+.pawn{transition:stroke .9s ease,filter .9s ease}
+.stone-fill{opacity:0;stroke:none;transition:opacity .9s ease}
+.stone-cracks{stroke:rgba(38,42,50,.7);stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round;opacity:0;transition:opacity .9s ease .35s}
+.freeze-count{font-size:15px;font-weight:900;fill:#1f252c;paint-order:stroke;stroke:rgba(255,255,255,.6);stroke-width:2.5px;opacity:0;transition:opacity .5s ease .5s}
+.piece.frozen .stone-fill{opacity:.8}
+.piece.frozen .stone-cracks,.piece.frozen .freeze-count{opacity:1}
+.piece.frozen .pawn{stroke:#d5d9de;filter:saturate(.2) brightness(.92) drop-shadow(0 4px 4px rgba(0,0,0,.2))}
+
+/* the snake piece */
+.piece-s{--sn-body:#3aa56e;--sn-edge:#0f3a25;--sn-mark:#14603d;--sn-sheen:#c9f7d8;--sn-eye:#ffd84a;--sn-tongue:#ff4d5e;--sn-disc:#182820;--sn-ring:#ffffff}
+.piece-s.charged{--sn-body:#e0303f;--sn-edge:#4a0912;--sn-mark:#8f1020;--sn-sheen:#ffc9cf;--sn-eye:#fff4bd;--sn-tongue:#ffe27a;--sn-disc:#2b0c10;--sn-ring:#ff5d6c}
+.sn-base{fill:var(--sn-disc);stroke:var(--sn-ring);stroke-width:3;transition:fill .7s ease,stroke .7s ease,filter .7s ease;filter:drop-shadow(0 4px 4px rgba(0,0,0,.28))}
+.sn-aura{fill:none;stroke:#ff3b4e;stroke-width:3;opacity:0;transition:opacity .6s ease}
+.piece-s.charged .sn-base{filter:drop-shadow(0 0 9px rgba(255,50,70,.95))}
+.piece-s.charged .sn-aura{opacity:.9;animation:snAura .9s ease-in-out infinite alternate}
+.piece-s.zapping .sn-base{animation:snZap .32s steps(2,end) 3}
+.sn-turn{transition:transform .38s ease}
+.sn-wiggle{animation:snWiggle 2.6s ease-in-out infinite alternate}
+.sn-edge{stroke:var(--sn-edge);transition:stroke .7s ease}
+.sn-fill{stroke:var(--sn-body);transition:stroke .7s ease}
+.sn-band{stroke:var(--sn-mark);transition:stroke .7s ease}
+.sn-sheen{stroke:var(--sn-sheen);opacity:.5;transition:stroke .7s ease}
+.sn-head{fill:var(--sn-body);stroke:var(--sn-edge);transition:fill .7s ease,stroke .7s ease}
+.sn-mark{fill:var(--sn-mark);transition:fill .7s ease}
+.sn-eye{fill:var(--sn-eye);transition:fill .7s ease}
+.piece-s.charged .sn-eye{filter:drop-shadow(0 0 2px #fff)}
+.sn-pupil{fill:#0d0d0d}
+.sn-tongue{stroke:var(--sn-tongue);stroke-width:1.25;transform-box:fill-box;transform-origin:left center;animation:snFlick 2.8s infinite;transition:stroke .7s ease}
+@keyframes snWiggle{from{transform:rotate(-2.4deg)}to{transform:rotate(2.4deg)}}
+@keyframes snFlick{0%,84%,100%{transform:scaleX(1)}89%{transform:scaleX(.15)}94%{transform:scaleX(1.12)}}
+@keyframes snAura{from{stroke-width:2;opacity:.35}to{stroke-width:5.5;opacity:.95}}
+@keyframes snZap{0%{filter:drop-shadow(0 0 16px #fff)}100%{filter:drop-shadow(0 0 4px rgba(255,50,70,.8))}}
+
+/* laser link between the snake and a petrified survivor */
+.laser-link{fill:none;stroke-linecap:round}
+.laser-glow{stroke:rgba(255,50,70,.34);stroke-width:9}
+.laser-core{stroke:#ff6b78;stroke-width:2.6;stroke-dasharray:7 6;animation:laserFlow .5s linear infinite}
+.laser-glow.zap{animation:laserZap 1s ease-out}
+@keyframes laserFlow{to{stroke-dashoffset:-13}}
+@keyframes laserZap{0%{stroke:rgba(255,255,255,.95);stroke-width:24}100%{stroke:rgba(255,50,70,.34);stroke-width:9}}
+.fx-burst{fill:none;stroke-width:5;pointer-events:none}
+.fx-kill{stroke:#ff4d5e}
+.fx-freeze{stroke:#ffb4bb}
+
+/* targets for a human snake */
+.attack-target{cursor:pointer}
+.attack-ring{fill:rgba(255,50,70,.16);stroke:#ff4d5e;stroke-width:3;stroke-dasharray:6 5;pointer-events:all;transform-box:fill-box;transform-origin:center;animation:attackSpin 1.6s linear infinite}
+.attack-cross{stroke:#ff4d5e;stroke-width:3;stroke-linecap:round;pointer-events:none}
+@keyframes attackSpin{to{transform:rotate(360deg)}}
+
+/* cards and buttons */
+.s{--pc:#3aa56e}
+.player-dot.s{background:#182820;box-shadow:inset 0 0 0 3px #3aa56e}
+.player-card.dead{opacity:.45;filter:grayscale(.85)}
+.player-card.frozen-card{border-color:#9aa3ad;box-shadow:0 0 18px rgba(154,163,173,.25)}
+.ability-button{border-color:#ff5d6c;color:#ff5d6c}
+.ability-button:disabled{opacity:.5;border-color:color-mix(in srgb,var(--text) 14%,transparent);color:var(--muted)}
+@media(prefers-reduced-motion:reduce){.sn-wiggle,.sn-tongue,.piece-s.charged .sn-aura,.laser-core,.attack-ring{animation:none}}

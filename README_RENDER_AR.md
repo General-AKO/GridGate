@@ -1,4 +1,4 @@
-# GridGate v0.10 — تشغيل Cloudflare وRender بالتوازي
+# GridGate v0.11 — تشغيل Cloudflare وRender بالتوازي
 
 هذه النسخة لا تحذف Cloudflare. نفس الواجهة ونفس Game Engine يمكن تشغيلهما بطريقتين:
 
@@ -64,7 +64,7 @@ Render يبني Web Service من Git repository. ارفع هذا المجلد إ
 https://gridgate-game-xxxx.onrender.com
 ```
 
-افتح `/api/health` للتأكد. يجب أن ترى `backend: "render-node"` و`version: "0.9.0"`.
+افتح `/api/health` للتأكد. يجب أن ترى `backend: "render-node"` و`version: "0.11.0"`.
 
 ## 4) الاختبار الصحيح بين Cloudflare وRender
 

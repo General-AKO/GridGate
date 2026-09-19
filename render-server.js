@@ -4,10 +4,10 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer, WebSocket } from 'ws';
-import { createInitialState, applyAction, skipCurrentTurn, getGameConfig } from './public/shared/game-engine.js';
+import { createInitialState, applyAction, skipCurrentTurn, getGameConfig, getAiSeatIds } from './public/shared/game-engine.js';
 import { chooseAiAction } from './public/shared/ai.js';
 
-const APP_VERSION = '0.10.0';
+const APP_VERSION = '0.11.0';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const BACKEND = 'render-node';
@@ -47,7 +47,7 @@ function makeRoomCode() {
   }
   throw new Error('Could not allocate a room code.');
 }
-function seatIds(room) { return Array.from({ length: room.game.playerCount }, (_, i) => `P${i + 1}`); }
+function seatIds(room) { return room.game.players.map(p => p.id); } // survivors P1..Pn, plus S (the snake) in Survival mode
 function aiIds(room) { return room.aiIds || []; }
 function humanSeatIds(room) { const ai = new Set(aiIds(room)); return seatIds(room).filter(id => !ai.has(id)); }
 function isAiSeat(room, id) { return aiIds(room).includes(id); }
@@ -58,9 +58,11 @@ function presence(room) {
   for (const id of seatIds(room)) out[id] = isAiSeat(room, id) ? true : room.sockets.get(id)?.readyState === WebSocket.OPEN;
   return out;
 }
+function isEliminated(room, id) { return room.game.players.find(p => p.id === id)?.alive === false; }
 function isReady(room) {
   const online = presence(room);
-  return humanSeatIds(room).every(id => room.players[id] && online[id]);
+  // An eliminated survivor may leave without stopping the match for everybody else.
+  return humanSeatIds(room).every(id => room.players[id] && (online[id] || isEliminated(room, id)));
 }
 function findSeatByToken(room, token) {
   if (!token) return null;
@@ -140,11 +142,10 @@ function handleTurnTimeout(room, revision) {
 function createRoom(config) {
   const code = makeRoomCode();
   const game = createInitialState(config);
-  const aiCount = normalizeAiCount(game.playerCount, config.aiCount);
-  const allIds = game.players.map(p => p.id);
-  const selectedAiIds = aiCount ? allIds.slice(-aiCount) : [];
+  const selectedAiIds = getAiSeatIds(game, config.aiCount);
+  const aiCount = selectedAiIds.length;
   const players = {};
-  for (const p of game.players) players[p.id] = selectedAiIds.includes(p.id) ? { name: aiCount === 1 ? 'Veteran AI' : `Veteran AI ${selectedAiIds.indexOf(p.id) + 1}`, ai: true } : null;
+  for (const p of game.players) players[p.id] = selectedAiIds.includes(p.id) ? { name: game.mode === 'survival' ? 'Snake AI' : aiCount === 1 ? 'Veteran AI' : `Veteran AI ${selectedAiIds.indexOf(p.id) + 1}`, ai: true } : null;
   const now = Date.now();
   const room = { code, createdAt: now, lastActivityAt: now, players, sockets: new Map(), game, aiCount, aiIds: selectedAiIds, rematchVotes: [], turnDeadline: null, turnTimer: null, timerRevision: 0 };
   rooms.set(code, room); return room;
@@ -152,7 +153,7 @@ function createRoom(config) {
 
 app.get('/api/health', (req, res) => { res.set('cache-control', 'no-store'); res.json({ ok: true, service: 'GridGate', version: APP_VERSION, backend: BACKEND, roomsInMemory: rooms.size, ...requestMeta(req) }); });
 app.post('/api/rooms', (req, res) => {
-  const config = getGameConfig(req.body?.playerCount, req.body?.mode);
+  const config = getGameConfig(req.body?.playerCount, req.body?.mode, req.body?.snakeMode);
   config.aiCount = normalizeAiCount(config.playerCount, req.body?.aiCount);
   const room = createRoom(config);
   res.status(201).set('cache-control', 'no-store').json({ ok: true, code: room.code, config: { ...config, aiCount: room.aiCount, humanCount: humanSeatIds(room).length }, ...requestMeta(req) });
@@ -205,7 +206,7 @@ wss.on('connection', ws => {
     if (data.type === 'rematch') {
       if (!room.game.winner) return send(ws, { type: 'error', error: 'The game is not finished.' });
       if (!room.rematchVotes.includes(playerId)) room.rematchVotes.push(playerId);
-      if (humanSeatIds(room).every(id => room.rematchVotes.includes(id))) { room.game = createInitialState({ playerCount: room.game.playerCount, mode: room.game.mode }); room.rematchVotes = []; scheduleTurn(room, true); broadcastState(room); }
+      if (humanSeatIds(room).every(id => room.rematchVotes.includes(id))) { room.game = createInitialState({ playerCount: room.game.playerCount, mode: room.game.mode, snakeMode: room.game.snakeMode }); room.rematchVotes = []; scheduleTurn(room, true); broadcastState(room); }
       else broadcastState(room);
       return;
     }
@@ -214,7 +215,7 @@ wss.on('connection', ws => {
   });
   ws.on('close', () => {
     if (!rooms.has(roomCode)) return;
-    if (room.sockets.get(playerId) === ws) { room.sockets.delete(playerId); const p = room.players[playerId]; if (p?.token === token) p.disconnectedAt = Date.now(); clearTurnTimer(room); broadcastState(room); }
+    if (room.sockets.get(playerId) === ws) { room.sockets.delete(playerId); const p = room.players[playerId]; if (p?.token === token) p.disconnectedAt = Date.now(); if (isReady(room)) scheduleTurn(room, false); else clearTurnTimer(room); broadcastState(room); }
   });
 });
 
