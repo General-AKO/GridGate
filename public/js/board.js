@@ -1,4 +1,4 @@
-import { getLegalPawnMoves, validateWallPlacement, reachedGoal, getSnakeAttackTargets, getSnake, isSnake, isAlive } from '../shared/game-engine.js';
+import { getLegalPawnMoves, validateWallPlacement, reachedGoal, getSnakeAttackTargets, getSnakeDashMoves, getSnake, isSnake, isAlive } from '../shared/game-engine.js';
 import { SNAKE_ART } from './snake-art.js';
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -84,15 +84,18 @@ export class BoardView {
     const board = this.layers.board; board.replaceChildren();
     board.append(el('rect', { x: 0, y: 0, width: total, height: total, rx: 18, class: 'board-bg' }));
     const legal = interactive && activePlayerId ? getLegalPawnMoves(state, activePlayerId) : [], set = new Set(legal.map(m => `${m.row},${m.col}`));
+    // A golden snake controlled by a person may also move two cells: those cells get a golden ring.
+    const dashes = interactive && activePlayerId && this.activeIsSnake() ? getSnakeDashMoves(state) : [], dashSet = new Set(dashes.map(m => `${m.row},${m.col}`));
     const goalPlayer = state.players[state.turn] || state.players.find(p => p.id === activePlayerId) || state.players[0];
     for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) {
       const { x, y } = this.cellXY(r, c);
       const isActiveGoal = goalPlayer ? reachedGoal(state, goalPlayer, r, c) : false;
       const goalClass = isActiveGoal ? `goal-cell goal-${goalPlayer.id.toLowerCase()}` : '';
       const sq = el('rect', { x, y, width: CELL, height: CELL, rx: 8, class: `board-cell ${goalClass}`.trim() });
-      sq.addEventListener('click', () => { if (interactive && set.has(`${r},${c}`)) this.callbacks.onMove?.(r, c); });
+      sq.addEventListener('click', () => { if (!interactive) return; if (set.has(`${r},${c}`)) this.callbacks.onMove?.(r, c); else if (dashSet.has(`${r},${c}`)) this.callbacks.onDash?.(r, c); });
       board.append(sq);
       if (set.has(`${r},${c}`)) { const m = el('circle', { cx: x + CELL / 2, cy: y + CELL / 2, r: 8, class: 'legal-move' }); m.addEventListener('click', () => this.callbacks.onMove?.(r, c)); board.append(m); }
+      else if (dashSet.has(`${r},${c}`)) { const m = el('circle', { cx: x + CELL / 2, cy: y + CELL / 2, r: 12, class: 'dash-move' }); m.addEventListener('click', () => this.callbacks.onDash?.(r, c)); board.append(m); }
     }
     for (const w of state.walls) board.append(el('rect', { ...this.wallRect(w), rx: 5, class: `placed-wall owner-${(w.owner || 'P1').toLowerCase()}` }));
     if (interactive && activePlayerId && this.wallModeEnabled && !this.activeIsSnake()) this.renderDesktopWallTargets(state, activePlayerId);
@@ -150,6 +153,7 @@ export class BoardView {
       rec.root.classList.toggle('frozen', p.frozen > 0);
       if (isSnake(p)) {
         rec.root.classList.toggle('charged', anyFrozen);
+        rec.root.classList.toggle('golden', p.gold > 0);
         const target = this.snakeAngleFor(p);
         if (this.snakeAngle === null) this.snakeAngle = target;
         else this.snakeAngle += ((target - this.snakeAngle + 540) % 360) - 180;

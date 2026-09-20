@@ -1,7 +1,7 @@
 import { createInitialState, applyAction, skipCurrentTurn, getGameConfig, getAiSeatIds } from '../public/shared/game-engine.js';
 import { chooseAiAction } from '../public/shared/ai.js';
 
-const ROOM_CODE_ALPHABET='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',ROOM_CODE_LENGTH=6,TURN_MS=32000,AI_DELAY_MS=520,AI_DIFFICULTY='veteran',RECLAIM_GRACE_MS=15000,APP_VERSION='0.11.0';
+const ROOM_CODE_ALPHABET='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',ROOM_CODE_LENGTH=6,TURN_MS=32000,AI_DELAY_MS=520,AI_DIFFICULTY='veteran',RECLAIM_GRACE_MS=15000,APP_VERSION='0.12.0';
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store, no-cache, must-revalidate'}});
 function makeRoomCode(){const b=new Uint8Array(ROOM_CODE_LENGTH);crypto.getRandomValues(b);let c='';for(const x of b)c+=ROOM_CODE_ALPHABET[x%ROOM_CODE_ALPHABET.length];return c}
 const normalizeRoomCode=v=>String(v||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,ROOM_CODE_LENGTH);
@@ -36,8 +36,8 @@ export class GameRoom{
       if(this.room)return json({ok:false,error:'Room already exists.'},409);
       const code=normalizeRoomCode(request.headers.get('x-room-code'));if(code.length!==6)return json({ok:false,error:'Bad room code.'},400);
       let cfg={};try{cfg=await request.json()}catch{}
-      const game=createInitialState(cfg),selectedAiIds=getAiSeatIds(game,cfg.aiCount),aiCount=selectedAiIds.length,players={};
-      for(const p of game.players)players[p.id]=selectedAiIds.includes(p.id)?{name:game.mode==='survival'?'Snake AI':aiCount===1?'Veteran AI':`Veteran AI ${selectedAiIds.indexOf(p.id)+1}`,ai:true}:null;
+      const game=createInitialState(cfg),selectedAiIds=getAiSeatIds(game,cfg.aiCount),aiCount=selectedAiIds.length,survivorAi=selectedAiIds.filter(id=>id!=='S'),players={};
+      for(const p of game.players)players[p.id]=selectedAiIds.includes(p.id)?{name:p.id==='S'?'Snake AI':survivorAi.length===1?'Veteran AI':`Veteran AI ${survivorAi.indexOf(p.id)+1}`,ai:true}:null;
       this.room={code,createdAt:Date.now(),players,game,aiCount,aiIds:selectedAiIds,rematchVotes:[],turnDeadline:null,timerRevision:0};
       await this.persist();return json({ok:true,created:true,aiCount,humanCount:this.humanSeatIds().length},201)
     }

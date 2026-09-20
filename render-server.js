@@ -7,7 +7,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { createInitialState, applyAction, skipCurrentTurn, getGameConfig, getAiSeatIds } from './public/shared/game-engine.js';
 import { chooseAiAction } from './public/shared/ai.js';
 
-const APP_VERSION = '0.11.0';
+const APP_VERSION = '0.12.0';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const BACKEND = 'render-node';
@@ -144,8 +144,9 @@ function createRoom(config) {
   const game = createInitialState(config);
   const selectedAiIds = getAiSeatIds(game, config.aiCount);
   const aiCount = selectedAiIds.length;
+  const survivorAi = selectedAiIds.filter(id => id !== 'S'); // the snake seat is named separately
   const players = {};
-  for (const p of game.players) players[p.id] = selectedAiIds.includes(p.id) ? { name: game.mode === 'survival' ? 'Snake AI' : aiCount === 1 ? 'Veteran AI' : `Veteran AI ${selectedAiIds.indexOf(p.id) + 1}`, ai: true } : null;
+  for (const p of game.players) players[p.id] = selectedAiIds.includes(p.id) ? { name: p.id === 'S' ? 'Snake AI' : survivorAi.length === 1 ? 'Veteran AI' : `Veteran AI ${survivorAi.indexOf(p.id) + 1}`, ai: true } : null;
   const now = Date.now();
   const room = { code, createdAt: now, lastActivityAt: now, players, sockets: new Map(), game, aiCount, aiIds: selectedAiIds, rematchVotes: [], turnDeadline: null, turnTimer: null, timerRevision: 0 };
   rooms.set(code, room); return room;

@@ -4,10 +4,12 @@ import { createInitialState, getGameConfig, getLegalPawnMoves, applyAction, vali
 import { chooseAiAction } from '../public/shared/ai.js';
 
 test('classic 2 players is 9x9 with 10 walls',()=>{const s=createInitialState({playerCount:2,mode:'classic'});assert.equal(s.boardSize,9);assert.equal(s.players.length,2);assert.equal(s.players[0].walls,10)});
-test('classic sizes are 9,12,14',()=>{assert.equal(getGameConfig(2,'classic').boardSize,9);assert.equal(getGameConfig(3,'classic').boardSize,12);assert.equal(getGameConfig(4,'classic').boardSize,14)});
-test('race sizes are 9,12,14 and all start same row',()=>{for(const n of [2,3,4]){const s=createInitialState({playerCount:n,mode:'race'});assert.equal(s.boardSize,n===2?9:n===3?12:14);assert.ok(s.players.every(p=>p.row===s.boardSize-1&&p.goal==='top'))}});
-test('center sizes are 9,11,13 with 8 walls',()=>{for(const n of [2,3,4]){const s=createInitialState({playerCount:n,mode:'center'});assert.equal(s.boardSize,n===2?9:n===3?11:13);assert.ok(s.players.every(p=>p.walls===8&&p.goal==='center'))}});
-test('center target is exact center cell',()=>{const s=createInitialState({playerCount:4,mode:'center'}),p=s.players[0];assert.equal(reachedGoal(s,p,6,6),true);assert.equal(reachedGoal(s,p,6,5),false)});
+test('classic sizes are 9,11,11',()=>{assert.equal(getGameConfig(2,'classic').boardSize,9);assert.equal(getGameConfig(3,'classic').boardSize,11);assert.equal(getGameConfig(4,'classic').boardSize,11)});
+test('race sizes are 9,11,11 and all start same row',()=>{for(const n of [2,3,4]){const s=createInitialState({playerCount:n,mode:'race'});assert.equal(s.boardSize,n===2?9:11);assert.ok(s.players.every(p=>p.row===s.boardSize-1&&p.goal==='top'))}});
+test('center sizes are 9,11,11 with 8 walls',()=>{for(const n of [2,3,4]){const s=createInitialState({playerCount:n,mode:'center'});assert.equal(s.boardSize,n===2?9:11);assert.ok(s.players.every(p=>p.walls===8&&p.goal==='center'))}});
+test('center target is the exact middle cell on odd boards',()=>{const s=createInitialState({playerCount:2,mode:'center'}),p=s.players[0];assert.equal(reachedGoal(s,p,4,4),true);assert.equal(reachedGoal(s,p,4,5),false)});
+test('center target is the middle 2x2 block if a board ever has an even size',()=>{for(const size of [10,12]){const s=createInitialState({playerCount:4,mode:'center'});s.boardSize=size;const p=s.players[0],hi=s.boardSize/2,lo=hi-1;for(let r=0;r<s.boardSize;r++)for(let c=0;c<s.boardSize;c++)assert.equal(reachedGoal(s,p,r,c),r>=lo&&r<=hi&&c>=lo&&c<=hi)}});
+test('every player has a path to the centre on the 11x11 four-player board',()=>{const s=createInitialState({playerCount:4,mode:'center'});for(const p of s.players)assert.equal(hasPathToGoal(s,p.id),true)});
 test('initial player has legal movement',()=>{const s=createInitialState();assert.ok(getLegalPawnMoves(s,'P1').length>=2)});
 test('turn changes after legal move',()=>{const s=createInitialState(),m=getLegalPawnMoves(s,'P1')[0],r=applyAction(s,'P1',{type:'move',...m});assert.equal(r.ok,true);assert.equal(r.state.turn,1)});
 test('wall owner is stored',()=>{const s=createInitialState(),r=applyAction(s,'P1',{type:'wall',row:0,col:0,orientation:'H'});assert.equal(r.ok,true);assert.equal(r.state.walls[0].owner,'P1')});
