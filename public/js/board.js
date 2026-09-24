@@ -1,4 +1,4 @@
-import { getLegalPawnMoves, validateWallPlacement, reachedGoal, getSnakeAttackTargets, getSnakeDashMoves, getSnake, isSnake, isAlive } from '../shared/game-engine.js';
+import { getLegalPawnMoves, validateWallPlacement, reachedGoal, getSnakeAttackTargets, getSnakeDashMoves, getSnake, isSnake, isAlive, isSnakeEnraged } from '../shared/game-engine.js';
 import { SNAKE_ART } from './snake-art.js';
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -31,6 +31,7 @@ export class BoardView {
   metrics() { const size = this.state?.boardSize || 9; return { size, total: PAD * 2 + CELL * size + GAP * (size - 1) }; }
   viewerPlayer() { return this.state?.players?.find(p => p.id === this.viewerPlayerId) || this.state?.players?.[0] || null; }
   activeIsSnake() { return this.state?.players?.find(p => p.id === this.activePlayerId)?.role === 'snake'; }
+  activeWallBanned() { return Boolean(this.state?.players?.find(p => p.id === this.activePlayerId)?.wallBanned); }
   rotation() {
     const p = this.viewerPlayer(); if (!p || !this.state) return 0;
     if (p.goal === 'top') return 0;
@@ -84,7 +85,7 @@ export class BoardView {
     const board = this.layers.board; board.replaceChildren();
     board.append(el('rect', { x: 0, y: 0, width: total, height: total, rx: 18, class: 'board-bg' }));
     const legal = interactive && activePlayerId ? getLegalPawnMoves(state, activePlayerId) : [], set = new Set(legal.map(m => `${m.row},${m.col}`));
-    // A golden snake controlled by a person may also move two cells: those cells get a golden ring.
+    // An enraged snake controlled by a person may also move two cells: those cells get a glowing ring.
     const dashes = interactive && activePlayerId && this.activeIsSnake() ? getSnakeDashMoves(state) : [], dashSet = new Set(dashes.map(m => `${m.row},${m.col}`));
     const goalPlayer = state.players[state.turn] || state.players.find(p => p.id === activePlayerId) || state.players[0];
     for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) {
@@ -98,7 +99,7 @@ export class BoardView {
       else if (dashSet.has(`${r},${c}`)) { const m = el('circle', { cx: x + CELL / 2, cy: y + CELL / 2, r: 12, class: 'dash-move' }); m.addEventListener('click', () => this.callbacks.onDash?.(r, c)); board.append(m); }
     }
     for (const w of state.walls) board.append(el('rect', { ...this.wallRect(w), rx: 5, class: `placed-wall owner-${(w.owner || 'P1').toLowerCase()}` }));
-    if (interactive && activePlayerId && this.wallModeEnabled && !this.activeIsSnake()) this.renderDesktopWallTargets(state, activePlayerId);
+    if (interactive && activePlayerId && this.wallModeEnabled && !this.activeIsSnake() && !this.activeWallBanned()) this.renderDesktopWallTargets(state, activePlayerId);
     this.syncPieces(state);
     this.renderLinksAndTargets(state);
     this.observeEvent(state);
@@ -153,7 +154,7 @@ export class BoardView {
       rec.root.classList.toggle('frozen', p.frozen > 0);
       if (isSnake(p)) {
         rec.root.classList.toggle('charged', anyFrozen);
-        rec.root.classList.toggle('golden', p.gold > 0);
+        rec.root.classList.toggle('enraged', isSnakeEnraged(state));
         const target = this.snakeAngleFor(p);
         if (this.snakeAngle === null) this.snakeAngle = target;
         else this.snakeAngle += ((target - this.snakeAngle + 540) % 360) - 180;
@@ -280,7 +281,7 @@ export class BoardView {
     this.svg.append(el('rect', { ...this.wallRect(g.wall), rx: 5, class: `wall-target touch-wall-preview preview-${this.activePlayerId.toLowerCase()} ${v.ok ? 'wall-valid' : 'wall-invalid'}` }));
   }
   onPointerDown(e) {
-    if (e.pointerType === 'mouse' || !this.interactive || !this.activePlayerId || !this.wallModeEnabled || this.activeIsSnake()) return;
+    if (e.pointerType === 'mouse' || !this.interactive || !this.activePlayerId || !this.wallModeEnabled || this.activeIsSnake() || this.activeWallBanned()) return;
     this.cancelTouchGesture();
     const g = { pointerId: e.pointerId, active: false, wall: null, valid: false, inside: false, timer: null, lastEvent: e };
     this.touchGesture = g;

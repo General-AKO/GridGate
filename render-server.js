@@ -7,7 +7,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { createInitialState, applyAction, skipCurrentTurn, getGameConfig, getAiSeatIds } from './public/shared/game-engine.js';
 import { chooseAiAction } from './public/shared/ai.js';
 
-const APP_VERSION = '0.12.0';
+const APP_VERSION = '0.13.0';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const BACKEND = 'render-node';

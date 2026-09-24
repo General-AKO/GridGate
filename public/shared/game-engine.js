@@ -4,9 +4,10 @@ export const SNAKE_ID = 'S';
 export const SNAKE_MODES = Object.freeze({ AI: 'ai', PLAYER: 'player' });
 // Survival mode tuning. The AI snake fires its freeze ability after a random 7-12 snake turns,
 // a player-controlled snake gets it every 6 turns. A petrified survivor loses his first turn completely and
-// on the second turn cannot move but may still build a wall (or pass). After every kill the snake turns golden
-// and may move two cells per turn on its next `goldTurns` turns.
-export const SURVIVAL_RULES = Object.freeze({ freezeTurns: 2, aiIntervalMin: 7, aiIntervalMax: 12, playerInterval: 6, wallsPerSurvivor: 8, goldTurns: 2 });
+// on the second turn cannot move but may still build a wall (or pass). If the snake goes `hungerLimits[playerCount]`
+// of its own turns without eating it becomes enraged and may move two cells a turn until its next kill. Every kill
+// also leaves the surviving players rattled: none of them may build a wall on their very next turn.
+export const SURVIVAL_RULES = Object.freeze({ freezeTurns: 2, aiIntervalMin: 7, aiIntervalMax: 12, playerInterval: 6, wallsPerSurvivor: 8, hungerLimits: { 2: 16, 3: 13, 4: 10 } });
 
 // Board size by number of players (survivors in Survival mode: the snake is never counted).
 // Two players keep their own size; 3 and 4 players share one size per mode family:
@@ -47,9 +48,9 @@ function createPlayers(config, rng = Math.random) {
       { row: size - 1, col: midLow, home: 'bottom' }, { row: 0, col: midLow, home: 'top' },
       { row: midLow, col: 0, home: 'left' }, { row: midLow, col: size - 1, home: 'right' },
     ];
-    const survivors = starts.slice(0, count).map((pos, i) => ({ id: `P${i + 1}`, ...pos, goal: 'survive', walls, color: PLAYER_COLORS[`P${i + 1}`], alive: true, frozen: 0 }));
+    const survivors = starts.slice(0, count).map((pos, i) => ({ id: `P${i + 1}`, ...pos, goal: 'survive', walls, color: PLAYER_COLORS[`P${i + 1}`], alive: true, frozen: 0, wallBanned: false }));
     const centre = midLow;
-    const snake = { id: SNAKE_ID, row: centre, col: centre, goal: 'hunt', role: 'snake', walls: 0, color: PLAYER_COLORS.S, alive: true, frozen: 0, facing: 'right', targetId: null, gold: 0, ability: { charge: 0, need: rollSnakeInterval(config.snakeMode, rng) } };
+    const snake = { id: SNAKE_ID, row: centre, col: centre, goal: 'hunt', role: 'snake', walls: 0, color: PLAYER_COLORS.S, alive: true, frozen: 0, facing: 'right', targetId: null, hunger: 0, ability: { charge: 0, need: rollSnakeInterval(config.snakeMode, rng) } };
     return [...survivors, snake];
   }
   if (mode === MODES.RACE) {
@@ -120,6 +121,20 @@ export function abilityTurnsLeft(state) {
   return snake?.ability ? Math.max(0, snake.ability.need - snake.ability.charge - 1) : 0;
 }
 
+/** How many of its own turns the snake may go without eating before it enrages, for this player count. */
+export function hungerLimit(state) { return SURVIVAL_RULES.hungerLimits[state.playerCount] || SURVIVAL_RULES.hungerLimits[2]; }
+/** True once the snake has gone hungry long enough to move two cells a turn (until its next kill). */
+export function isSnakeEnraged(state) {
+  const snake = getSnake(state);
+  return Boolean(snake && !state.winner && (snake.hunger || 0) >= hungerLimit(state));
+}
+/** Snake turns left before it enrages (0 once it already has). */
+export function hungerTurnsLeft(state) {
+  const snake = getSnake(state);
+  if (!snake) return 0;
+  return Math.max(0, hungerLimit(state) - (snake.hunger || 0));
+}
+
 /** Alive survivors standing orthogonally next to the snake with no wall between them. */
 export function getSnakeAttackTargets(state) {
   const snake = getSnake(state);
@@ -130,12 +145,12 @@ export function getSnakeAttackTargets(state) {
 }
 
 /**
- * Golden snake only: every cell the snake can reach with exactly two steps (walls and pawns still block each step).
+ * Enraged snake only: every cell the snake can reach with exactly two steps (walls and pawns still block each step).
  * Each entry: { row, col, via } where `via` is an intermediate cell of one valid path.
  */
 export function getSnakeDashMoves(state) {
   const snake = getSnake(state);
-  if (!snake || !(snake.gold > 0) || state.winner) return [];
+  if (!snake || !isSnakeEnraged(state) || state.winner) return [];
   const home = { row: snake.row, col: snake.col };
   const out = new Map();
   try {
@@ -164,6 +179,8 @@ function directionName(r0, c0, r1, c1) {
  * which is skipped automatically when the player has no walls left to build.
  */
 function endTurn(next) {
+  const outgoing = next.players[next.turn];
+  if (outgoing && !isSnake(outgoing) && outgoing.wallBanned) outgoing.wallBanned = false; // the ban only ever covers one turn
   next.moveNumber += 1;
   const n = next.players.length;
   for (let guard = 0; guard < n * 4; guard++) {
@@ -307,7 +324,7 @@ export function skipCurrentTurn(state) {
   if (!state || state.winner) return state;
   const next = cloneState(state);
   const cur = next.players[next.turn];
-  if (isSnake(cur) && cur.ability) { cur.ability.charge += 1; cur.gold = Math.max(0, (cur.gold || 0) - 1); } // a skipped snake turn still counts as a round
+  if (isSnake(cur) && cur.ability) { cur.ability.charge += 1; cur.hunger = (cur.hunger || 0) + 1; } // a skipped snake turn still counts as a round (and towards hunger)
   if (!isSnake(cur) && cur.frozen === 1) cur.frozen = 0; // a timed-out stiff turn ends the petrification
   endTurn(next);
   return next;
@@ -315,28 +332,28 @@ export function skipCurrentTurn(state) {
 
 function applySnakeAction(state, next, snake, action, options) {
   const rng = options.rng || Math.random;
-  const goldBefore = snake.gold || 0;
-  const spendGold = () => { snake.gold = Math.max(0, goldBefore - 1); };
   const hint = () => { if (typeof action.intent === 'string' && getSurvivors(state).some(p => p.id === action.intent)) snake.targetId = action.intent; };
   if (action.type === 'move') {
     const row = Number(action.row), col = Number(action.col);
     if (!getLegalPawnMoves(state, snake.id).some(m => m.row === row && m.col === col)) return { ok: false, error: 'Illegal snake move.' };
     snake.facing = directionName(snake.row, snake.col, row, col);
     snake.row = row; snake.col = col;
-    hint(); spendGold();
+    hint();
     snake.ability.charge += 1;
+    snake.hunger = (snake.hunger || 0) + 1;
     commitTurn(next);
     return { ok: true, state: next };
   }
   if (action.type === 'dash') {
-    if (!(goldBefore > 0)) return { ok: false, error: 'The snake is not golden right now.' };
+    if (!isSnakeEnraged(state)) return { ok: false, error: 'The snake is not enraged right now.' };
     const row = Number(action.row), col = Number(action.col);
     const dash = getSnakeDashMoves(state).find(d => d.row === row && d.col === col);
     if (!dash) return { ok: false, error: 'Illegal two-step move.' };
     snake.facing = directionName(dash.via.row, dash.via.col, row, col);
     snake.row = row; snake.col = col;
-    hint(); spendGold();
+    hint();
     snake.ability.charge += 1;
+    snake.hunger = (snake.hunger || 0) + 1;
     commitTurn(next);
     return { ok: true, state: next };
   }
@@ -348,7 +365,8 @@ function applySnakeAction(state, next, snake, action, options) {
     snake.facing = directionName(snake.row, snake.col, prey.row, prey.col);
     snake.targetId = null;
     snake.ability.charge += 1;
-    snake.gold = SURVIVAL_RULES.goldTurns; // eating makes the snake golden: two cells per turn for its next turns
+    snake.hunger = 0; // well fed: no longer enraged
+    for (const p of getSurvivors(next)) p.wallBanned = true; // the kill leaves every survivor rattled: no walls on their next turn
     next.lastEvent = { n: state.moveNumber, type: 'kill', target: id, by: snake.id, row: prey.row, col: prey.col };
     const alive = getSurvivors(next);
     if (alive.length <= 1) next.winner = alive[0]?.id || snake.id;
@@ -366,7 +384,7 @@ function applySnakeAction(state, next, snake, action, options) {
     snake.facing = directionName(snake.row, snake.col, victim.row, victim.col);
     snake.ability.charge = 0;
     snake.ability.need = rollSnakeInterval(state.snakeMode, rng);
-    spendGold();
+    snake.hunger = (snake.hunger || 0) + 1;
     next.lastEvent = { n: state.moveNumber, type: 'freeze', target: victim.id, by: snake.id, turns: SURVIVAL_RULES.freezeTurns };
     commitTurn(next); // like placing a wall: using the ability ends the snake's turn
     return { ok: true, state: next };
@@ -400,6 +418,7 @@ export function applyAction(state, playerId, action, options = {}) {
     return {ok:true,state:next};
   }
   if (action.type === 'wall') {
+    if (p.wallBanned) return {ok:false,error:'Walls are banned this turn — the kill left everyone rattled.'};
     if (p.walls<=0) return {ok:false,error:'You have no walls left.'};
     const wall={row:Number(action.row),col:Number(action.col),orientation:action.orientation,owner:playerId};
     const valid=validateWallPlacement(state,wall); if(!valid.ok) return valid;

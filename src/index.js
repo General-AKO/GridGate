@@ -1,7 +1,7 @@
 import { createInitialState, applyAction, skipCurrentTurn, getGameConfig, getAiSeatIds } from '../public/shared/game-engine.js';
 import { chooseAiAction } from '../public/shared/ai.js';
 
-const ROOM_CODE_ALPHABET='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',ROOM_CODE_LENGTH=6,TURN_MS=32000,AI_DELAY_MS=520,AI_DIFFICULTY='veteran',RECLAIM_GRACE_MS=15000,APP_VERSION='0.12.0';
+const ROOM_CODE_ALPHABET='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',ROOM_CODE_LENGTH=6,TURN_MS=32000,AI_DELAY_MS=520,AI_DIFFICULTY='veteran',RECLAIM_GRACE_MS=15000,APP_VERSION='0.13.0';
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store, no-cache, must-revalidate'}});
 function makeRoomCode(){const b=new Uint8Array(ROOM_CODE_LENGTH);crypto.getRandomValues(b);let c='';for(const x of b)c+=ROOM_CODE_ALPHABET[x%ROOM_CODE_ALPHABET.length];return c}
 const normalizeRoomCode=v=>String(v||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,ROOM_CODE_LENGTH);

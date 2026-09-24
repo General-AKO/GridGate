@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   createInitialState, applyAction, skipCurrentTurn, getGameConfig, getLegalPawnMoves, validateWallPlacement,
   getSnake, getSurvivors, getSnakeAttackTargets, getSnakeDashMoves, isAbilityReady, canUseAbility, abilityTurnsLeft,
-  getAiSeatIds, maxAiPlayers, SNAKE_ID, SURVIVAL_RULES,
+  getAiSeatIds, maxAiPlayers, isSnakeEnraged, hungerLimit, hungerTurnsLeft, SNAKE_ID, SURVIVAL_RULES,
 } from '../public/shared/game-engine.js';
 import { chooseAiAction } from '../public/shared/ai.js';
 
@@ -25,11 +25,14 @@ test('survival setup: sizes, snake start cell, survivors on the edges', () => {
     const mid = Math.floor((s.boardSize - 1) / 2);
     assert.deepEqual([snake.row, snake.col], [mid, mid]);
     assert.equal(snake.walls, 0);
-    assert.equal(snake.gold, 0);
+    assert.equal(snake.hunger, 0);
+    assert.equal(isSnakeEnraged(s), false);
+    assert.equal(hungerLimit(s), { 2: 16, 3: 13, 4: 10 }[count]);
     assert.equal(getSurvivors(s).length, count);
     assert.equal(s.players.at(-1).id, SNAKE_ID, 'the snake plays after all survivors');
     for (const p of getSurvivors(s)) {
       assert.equal(p.walls, 8, 'exactly 8 walls per survivor');
+      assert.equal(p.wallBanned, false);
       assert.ok(p.row === 0 || p.col === 0 || p.row === s.boardSize - 1 || p.col === s.boardSize - 1);
     }
   }
@@ -85,15 +88,19 @@ test('survivors may still jump over the snake like over any pawn', () => {
   assert.ok(getLegalPawnMoves(s, 'P1').some((m) => m.row === c - 1 && m.col === c));
 });
 
-test('attack kills the pawn, leaves an event, frees the cell and turns the snake golden', () => {
+test('attack kills the pawn, leaves an event, frees the cell, feeds the snake and bans walls for the survivors', () => {
   const s = turnOf(fresh(3), SNAKE_ID);
   const c = getSnake(s).row;
   place(s, 'P1', c, c + 1);
+  give(s, SNAKE_ID, { hunger: 7 });
   const r = applyAction(s, SNAKE_ID, { type: 'attack', target: 'P1' });
   assert.ok(r.ok);
   assert.equal(at(r.state, 'P1').alive, false);
   assert.deepEqual(r.state.lastEvent, { n: s.moveNumber, type: 'kill', target: 'P1', by: SNAKE_ID, row: c, col: c + 1 });
-  assert.equal(getSnake(r.state).gold, SURVIVAL_RULES.goldTurns);
+  assert.equal(getSnake(r.state).hunger, 0, 'well fed');
+  assert.equal(isSnakeEnraged(r.state), false);
+  assert.equal(at(r.state, 'P2').wallBanned, true, 'every living survivor is banned from building for one turn');
+  assert.equal(at(r.state, 'P3').wallBanned, true);
   assert.equal(r.state.winner, null);
   assert.equal(r.state.players[r.state.turn].id, 'P2');
   assert.equal(applyAction(s, SNAKE_ID, { type: 'attack', target: 'P2' }).ok, false, 'P2 is not adjacent');
@@ -200,12 +207,13 @@ test('a frozen victim cannot be picked again and the ability needs a valid targe
   assert.equal(applyAction(s, SNAKE_ID, { type: 'ability' }).ok, false);
 });
 
-test('golden snake: two-cell dash, walls and pawns still block, no returning to the start', () => {
+test('enraged snake: two-cell dash, walls and pawns still block, no returning to the start', () => {
   const s = turnOf(fresh(2), SNAKE_ID);
   const c = getSnake(s).row;
-  assert.deepEqual(getSnakeDashMoves(s), [], 'no dash while not golden');
+  assert.deepEqual(getSnakeDashMoves(s), [], 'no dash while not enraged');
   assert.equal(applyAction(s, SNAKE_ID, { type: 'dash', row: c + 2, col: c }).ok, false);
-  give(s, SNAKE_ID, { gold: 2 });
+  give(s, SNAKE_ID, { hunger: hungerLimit(s) });
+  assert.equal(isSnakeEnraged(s), true);
   const dashes = getSnakeDashMoves(s);
   assert.ok(dashes.length >= 8);
   assert.ok(dashes.every((d) => dist(d, { row: c, col: c }) === 2), 'exactly two cells away');
@@ -223,35 +231,73 @@ test('golden snake: two-cell dash, walls and pawns still block, no returning to 
   const r = applyAction(s, SNAKE_ID, { type: 'dash', row: c + 2, col: c });
   assert.ok(r.ok, r.error);
   assert.deepEqual([getSnake(r.state).row, getSnake(r.state).col], [c + 2, c]);
-  assert.equal(getSnake(r.state).gold, 1, 'one golden turn used');
+  assert.equal(getSnake(r.state).hunger, hungerLimit(s) + 1, 'the dash still only counts as one turn');
+  assert.equal(isSnakeEnraged(r.state), true, 'still enraged: only a kill resets hunger');
   assert.equal(getSnake(r.state).ability.charge, 1);
   assert.equal(applyAction(s, SNAKE_ID, { type: 'dash', row: c, col: c }).ok, false, 'no null move');
   assert.equal(applyAction(s, SNAKE_ID, { type: 'dash', row: c + 1, col: c }).ok, false, 'one cell is not a dash');
 });
 
-test('gold lasts two snake turns whatever it does, a single step is still allowed, and eating renews it', () => {
-  let s = turnOf(fresh(3), SNAKE_ID);
-  give(s, SNAKE_ID, { gold: 2 });
+test('hunger: the threshold is per player count, counts down visibly, and a single step stays legal while enraged', () => {
+  assert.equal(hungerLimit(fresh(2)), 16);
+  assert.equal(hungerLimit(fresh(3)), 13);
+  assert.equal(hungerLimit(fresh(4)), 10);
+  const s = fresh(2);
+  assert.equal(hungerTurnsLeft(s), 16);
+  give(s, SNAKE_ID, { hunger: 9 });
+  assert.equal(hungerTurnsLeft(s), 7);
+  assert.equal(isSnakeEnraged(s), false);
+  give(s, SNAKE_ID, { hunger: 16 });
+  assert.equal(hungerTurnsLeft(s), 0);
+  assert.equal(isSnakeEnraged(s), true);
+
+  // enraged, but a plain single-cell move is still a legal choice
+  turnOf(s, SNAKE_ID);
   const single = applyAction(s, SNAKE_ID, { type: 'move', ...getLegalPawnMoves(s, SNAKE_ID)[0] });
   assert.ok(single.ok);
-  assert.equal(getSnake(single.state).gold, 1);
-  const second = turnOf(single.state, SNAKE_ID);
-  const again = applyAction(second, SNAKE_ID, { type: 'move', ...getLegalPawnMoves(second, SNAKE_ID)[0] });
-  assert.equal(getSnake(again.state).gold, 0);
-  const third = turnOf(again.state, SNAKE_ID);
-  assert.equal(applyAction(third, SNAKE_ID, { type: 'dash', row: 0, col: 0 }).ok, false);
+  assert.equal(getSnake(single.state).hunger, 17);
+  assert.equal(isSnakeEnraged(single.state), true, 'stays enraged next turn too, since it still has not eaten');
 
-  // eating while golden restarts the two golden turns
+  // eating resets hunger to 0 and immediately ends the enraged state
   const eater = turnOf(fresh(3), SNAKE_ID);
-  give(eater, SNAKE_ID, { gold: 1 });
+  give(eater, SNAKE_ID, { hunger: hungerLimit(eater) + 3 });
   const c = getSnake(eater).row;
   place(eater, 'P2', c, c - 1);
   const ate = applyAction(eater, SNAKE_ID, { type: 'attack', target: 'P2' });
-  assert.equal(getSnake(ate.state).gold, 2);
-  // a skipped (timed out) snake turn also uses up a golden turn
+  assert.equal(getSnake(ate.state).hunger, 0);
+  assert.equal(isSnakeEnraged(ate.state), false);
+
+  // a skipped (timed out) snake turn also counts towards hunger
   const idle = turnOf(fresh(2), SNAKE_ID);
-  give(idle, SNAKE_ID, { gold: 2 });
-  assert.equal(getSnake(skipCurrentTurn(idle)).gold, 1);
+  assert.equal(getSnake(skipCurrentTurn(idle)).hunger, 1);
+});
+
+test('a kill bans walls for every living survivor, but only until each one finishes their own next turn', () => {
+  let s = turnOf(fresh(3), SNAKE_ID);
+  const c = getSnake(s).row;
+  place(s, 'P1', c, c + 1);
+  s = applyAction(s, SNAKE_ID, { type: 'attack', target: 'P1' }).state;
+  assert.equal(at(s, 'P2').wallBanned, true);
+  assert.equal(at(s, 'P3').wallBanned, true);
+  const blocked = applyAction(s, 'P2', { type: 'wall', row: 0, col: 0, orientation: 'H' });
+  assert.equal(blocked.ok, false);
+  assert.match(blocked.error, /banned/);
+  // moving is unaffected, and it lifts the ban for P2 only
+  s = applyAction(s, 'P2', { type: 'move', ...getLegalPawnMoves(s, 'P2')[0] }).state;
+  assert.equal(at(s, 'P2').wallBanned, false);
+  assert.equal(at(s, 'P3').wallBanned, true, 'P3 has not had a turn yet, still banned');
+  s = applyAction(s, 'P3', { type: 'move', ...getLegalPawnMoves(s, 'P3')[0] }).state;
+  assert.equal(at(s, 'P3').wallBanned, false);
+
+  // a timed-out (skipped) turn also lifts the ban (fresh(3) so the match does not end on this single kill)
+  let s2 = turnOf(fresh(3), SNAKE_ID);
+  const c2 = getSnake(s2).row;
+  place(s2, 'P1', c2, c2 + 1);
+  s2 = applyAction(s2, SNAKE_ID, { type: 'attack', target: 'P1' }).state;
+  assert.equal(s2.players[s2.turn].id, 'P2');
+  assert.equal(at(s2, 'P2').wallBanned, true);
+  s2 = skipCurrentTurn(s2);
+  assert.equal(at(s2, 'P2').wallBanned, false);
 });
 
 test('walls must always leave the snake a path to every living survivor', () => {
@@ -315,9 +361,9 @@ test('snake AI: attacks when adjacent, freezes when ready, otherwise hunts the c
   assert.deepEqual([a.row, a.col], [c + 1, c]);
 });
 
-test('golden snake AI takes the double move towards its prey, but still eats first when it can', () => {
+test('an enraged snake AI takes the double move towards its prey, but still eats first when it can', () => {
   let s = turnOf(fresh(2), SNAKE_ID);
-  give(s, SNAKE_ID, { gold: 2 });
+  give(s, SNAKE_ID, { hunger: hungerLimit(s) });
   const c = getSnake(s).row;
   place(s, 'P1', c + 3, c);
   place(s, 'P2', 0, 0);
@@ -328,7 +374,7 @@ test('golden snake AI takes the double move towards its prey, but still eats fir
   assert.ok(applyAction(s, SNAKE_ID, a).ok);
 
   s = turnOf(fresh(2), SNAKE_ID);
-  give(s, SNAKE_ID, { gold: 2 });
+  give(s, SNAKE_ID, { hunger: hungerLimit(s) });
   place(s, 'P1', c, c + 1);
   assert.deepEqual(chooseAiAction(s, SNAKE_ID, 'veteran'), { type: 'attack', target: 'P1' });
 });
@@ -357,17 +403,26 @@ test('survivor AI never ends its turn next to the snake when it has a safe move'
   }
 });
 
-test('survivor AI never leaves an open square and runs away from a golden snake that can dash', () => {
+test('survivor AI runs away from an enraged snake that can dash: it never ends its turn where the snake could reach and eat it next', () => {
   const s = fresh(3);
   const c = getSnake(s).row;
   place(s, 'P1', c + 4, c);
-  give(s, SNAKE_ID, { gold: 2 });
+  give(s, SNAKE_ID, { hunger: hungerLimit(s) });
   for (const level of ['veteran', 'expert']) {
     const a = chooseAiAction(s, 'P1', level);
     const r = applyAction(s, 'P1', a);
     assert.ok(r.ok, r.error);
     const after = at(r.state, 'P1');
-    assert.ok(dist(after, getSnake(r.state)) >= 4, `${level} did not walk into the dash range (${JSON.stringify(a)})`);
+    assert.ok(dist(after, getSnake(r.state)) > 1, `${level} did not end its turn right next to the snake (${JSON.stringify(a)})`);
+  }
+});
+
+test('survivor AI never attempts a wall while wallBanned, even with plenty of walls left', () => {
+  const s = fresh(2);
+  give(s, 'P1', { wallBanned: true });
+  for (const level of ['skilled', 'veteran', 'expert']) {
+    const a = chooseAiAction(s, 'P1', level);
+    assert.ok(a && a.type !== 'wall', `${level}: ${JSON.stringify(a)}`);
   }
 });
 

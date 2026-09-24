@@ -82,12 +82,18 @@ button,input{font:inherit}button{cursor:pointer}.hidden{display:none!important}.
 .ability-button:disabled{opacity:.5;border-color:color-mix(in srgb,var(--text) 14%,transparent);color:var(--muted)}
 @media(prefers-reduced-motion:reduce){.sn-wiggle,.sn-tongue,.piece-s.charged .sn-aura,.laser-core,.attack-ring{animation:none}}
 
-/* ------------------------------------------------------------------ v0.12 golden snake + dash targets */
-.piece-s.golden{--sn-body:#f4b91d;--sn-edge:#6b4a00;--sn-mark:#b97800;--sn-sheen:#fff2b3;--sn-eye:#fffbe0;--sn-tongue:#ff7a3d;--sn-disc:#2a1f05;--sn-ring:#ffd24a}
-.piece-s.golden .sn-base{filter:drop-shadow(0 0 10px rgba(255,204,64,.95))}
-.piece-s.golden .sn-aura{stroke:#ffd24a;opacity:.95;animation:snAura .8s ease-in-out infinite alternate}
+/* ------------------------------------------------------------------ v0.13 enraged snake (hunger) + dash targets */
+.piece-s.enraged{--sn-body:#f4b91d;--sn-edge:#6b4a00;--sn-mark:#b97800;--sn-sheen:#fff2b3;--sn-eye:#fffbe0;--sn-tongue:#ff7a3d;--sn-disc:#2a1f05;--sn-ring:#ffd24a}
+.piece-s.enraged .sn-base{filter:drop-shadow(0 0 10px rgba(255,204,64,.95))}
+.piece-s.enraged .sn-aura{stroke:#ffd24a;opacity:.95;animation:snAura .8s ease-in-out infinite alternate}
 .dash-move{fill:rgba(255,201,51,.16);stroke:#ffc933;stroke-width:3;stroke-dasharray:4 4;pointer-events:all;cursor:pointer;transform-box:fill-box;transform-origin:center;animation:attackSpin 2.4s linear infinite}
-@media(prefers-reduced-motion:reduce){.dash-move,.piece-s.golden .sn-aura{animation:none}}
+@media(prefers-reduced-motion:reduce){.dash-move,.piece-s.enraged .sn-aura{animation:none}}
+
+/* wall-banned: the kill left everyone rattled for one turn, so the wall buttons turn cracked and gray */
+.orientation-group.walls-banned{pointer-events:none;background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--muted) 30%,transparent) 0 6px,color-mix(in srgb,var(--muted) 14%,transparent) 6px 12px)}
+.orientation-group.walls-banned .orientation-button{color:var(--muted);filter:grayscale(1) opacity(.75)}
+.orientation-group.walls-banned .wall-mini{background:var(--muted)}
+.player-card.s.hunger-critical .wall-count{color:#ff8a3d;font-weight:900}
 
 /* ------------------------------------------------------------------ v0.12.1 mode selection screen */
 .mode-card{grid-template-columns:104px 1fr 18px}

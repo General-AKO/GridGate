@@ -1,13 +1,10 @@
-README.md
-README_AR.md
 package.json
-public/css/style.css
 public/index.html
+public/css/style.css
 public/js/app.js
 public/js/board.js
 public/shared/game-engine.js
 public/shared/survival-ai.js
 render-server.js
 src/index.js
-tests/game-engine.test.mjs
 tests/survival-mode.test.mjs

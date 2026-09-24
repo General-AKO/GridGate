@@ -10,6 +10,7 @@ import {
   getSurvivors,
   isAlive,
   isSnake,
+  isSnakeEnraged,
   validateWallPlacement,
 } from './game-engine.js';
 
@@ -105,7 +106,8 @@ const playerById = (state, id) => state.players.find((p) => p.id === id);
  * path distance to the survivor's *current* cell, a bonus for petrified (helpless) prey, a bonus for
  * prey with little room to escape, and a small loyalty bonus so it does not flip-flop between two
  * equally distant targets. Then it steps towards the chosen prey, preferring the step that also
- * shrinks the space that prey can still run to. While golden it looks at every two-step move too.
+ * shrinks the space that prey can still run to. Once enraged (hungry too long) it looks at every
+ * two-step move too, since it can cover twice the ground until its next kill.
  */
 export function chooseSnakeAction(state, difficulty = 'veteran') {
   const snake = getSnake(state);
@@ -119,12 +121,12 @@ export function chooseSnakeAction(state, difficulty = 'veteran') {
     return { type: 'attack', target: attackable[0].id };
   }
 
-  const golden = snake.gold > 0;
-  // Golden snakes prefer the double move; the freeze ability simply stays ready for a later turn.
-  if (!golden && canUseAbility(state)) return { type: 'ability' };
+  const enraged = isSnakeEnraged(state);
+  // An enraged snake prefers the double move; the freeze ability simply stays ready for a later turn.
+  if (!enraged && canUseAbility(state)) return { type: 'ability' };
 
   const singles = getLegalPawnMoves(state, snake.id).map((m) => ({ ...m, kind: 'move' }));
-  const dashes = golden ? getSnakeDashMoves(state).map((m) => ({ row: m.row, col: m.col, kind: 'dash' })) : [];
+  const dashes = enraged ? getSnakeDashMoves(state).map((m) => ({ row: m.row, col: m.col, kind: 'dash' })) : [];
   const options = [...singles, ...dashes];
   if (!options.length) return canUseAbility(state) ? { type: 'ability' } : null;
 
@@ -141,7 +143,7 @@ export function chooseSnakeAction(state, difficulty = 'veteran') {
     let score = d;
     if (smart) {
       score -= Math.min(p.frozen || 0, 2) * 1.6;
-      score += territory(bfs(grid, cellIndex(state, p)), distFromSnake, golden ? 2 : 1) * 0.12;
+      score += territory(bfs(grid, cellIndex(state, p)), distFromSnake, enraged ? 2 : 1) * 0.12;
       if (snake.targetId === p.id) score -= 1.5;
     } else {
       score += Math.random() * 2.5;
@@ -215,7 +217,7 @@ function leafEval(model) {
   const { grid } = model;
   const fromMe = bfs(grid, model.me);
   const fromSnake = bfs(grid, model.snake);
-  const speed = model.gold > 0 ? 2 : 1;
+  const speed = model.enraged ? 2 : 1;
   const d = fromSnake[model.me];
   const effective = d < 0 ? 30 : Math.ceil(d / speed);
   const mine = new Uint8Array(grid.n);
@@ -240,7 +242,7 @@ function snakeOptions(model) {
   for (const a of openNeighbours(grid, model.snake)) {
     if (blockedCell(a)) continue;
     out.add(a);
-    if (model.gold > 0) for (const b of openNeighbours(grid, a)) if (b !== model.snake && !blockedCell(b)) out.add(b);
+    if (model.enraged) for (const b of openNeighbours(grid, a)) if (b !== model.snake && !blockedCell(b)) out.add(b);
   }
   return [...out];
 }
@@ -253,7 +255,7 @@ function snakeTurn(model, depth, ctx, alpha, ply) {
   if (!options.length) return leafEval(model);
   let best = Infinity;
   for (const dest of options) {
-    const v = myTurn({ ...model, snake: dest, gold: Math.max(0, model.gold - 1) }, depth - 1, ctx, best, ply + 1);
+    const v = myTurn({ ...model, snake: dest }, depth - 1, ctx, best, ply + 1);
     if (v < best) best = v;
     if (best <= alpha) break;
   }
@@ -332,8 +334,9 @@ export function chooseSurvivorAction(state, playerId, difficulty = 'skilled') {
   const size = state.boardSize;
   const grid = makeGrid(state);
   const occupied = new Set(getSurvivors(state).filter((p) => p.id !== playerId).map((p) => cellIndex(state, p)));
-  const base = { grid, me: cellIndex(state, me), snake: cellIndex(state, snake), gold: snake.gold || 0, occupied };
+  const base = { grid, me: cellIndex(state, me), snake: cellIndex(state, snake), enraged: isSnakeEnraged(state), occupied };
   const stiff = me.frozen === 1; // petrified second turn: walls or pass only
+  const wallsAllowed = !me.wallBanned; // a recent kill leaves everyone unable to build for one turn
 
   const candidates = [];
   if (stiff) candidates.push({ action: { type: 'pass' }, model: base, cost: 0 });
@@ -344,7 +347,7 @@ export function chooseSurvivorAction(state, playerId, difficulty = 'skilled') {
       candidates.push({ action: { type: 'move', row: m.row, col: m.col }, model: { ...base, me: idx }, cost: back ? BACKTRACK_COST : 0 });
     }
   }
-  if (me.walls > 0 && (stiff || cfg.walls > 0)) {
+  if (me.walls > 0 && wallsAllowed && (stiff || cfg.walls > 0)) {
     for (const w of survivalWallCandidates(state, me, stiff ? 8 : cfg.walls)) {
       candidates.push({ action: w, model: { ...base, grid: gridWithWall(grid, w) }, cost: WALL_COST });
     }
